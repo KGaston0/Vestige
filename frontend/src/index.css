@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: #090d16;
+  color: #f1f5f9;
+}
+
+/* ── Layout Computing Indicator ─────────────────────────────────── */
+@keyframes layout-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.layout-indicator {
+  animation: layout-pulse 1.2s ease-in-out infinite;
+}
