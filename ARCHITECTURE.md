@@ -2,7 +2,7 @@
 
 **System Title:** Vestige: Tactical Ephemeral Visual Forensics for Lateral Movement Detection  
 **Author / Architect:** Senior Systems Architect & Digital Forensics Expert  
-**Version:** 1.1.0 (Expanded Dual-Log Specification: SSH + HTTP Web Access)  
+**Version:** 1.2.0 (Red Thread — Signal vs. Noise Architectural Pivot)  
 **Date:** August 2026  
 
 ---
@@ -79,15 +79,21 @@ sequenceDiagram
     
     API->>GRAPH: Build Multi-Layer Directed Topology (Nodes: IPs, Hosts, Users, URLs)
     GRAPH->>GRAPH: Temporal & IP Correlation (Connect Web Exploitation -> SSH Pivot)
-    GRAPH->>GRAPH: Semantic URI Collapsing & Background Noise Aggregation (Drop static assets, wildcard numeric paths)
-    GRAPH->>GRAPH: Algorithmic Noise Reduction (Suppress static GET 200s & scheduled cron SSH)
+    GRAPH->>GRAPH: AlgorithmicNoiseReducer (Static pruning, URI collapsing, brute-force detection)
     GRAPH->>GRAPH: Attack Chain Anomaly Scoring (Flag web POST upload -> SSH root login)
+    
+    note over GRAPH: ── RED THREAD BIFURCATION ──
+    GRAPH->>GRAPH: THE SIGNAL: Extract nodes with risk_score >= 3.0 OR anomalous edges
+    GRAPH->>GRAPH: THE NOISE:  Collapse all remaining benign nodes into 3 background Super-Nodes
+    note over GRAPH: super:external_noise / super:web_surface / super:internal_baseline
+    GRAPH->>GRAPH: Merge SIGNAL + NOISE streams → final presentation payload
+    
     GRAPH->>GRAPH: Pre-compute Multi-Layer DAG Coordinates (External -> Web -> Internal)
-    GRAPH-->>API: Multi-Layer Topology & Anomaly Payload
+    GRAPH-->>API: Red Thread Presentation Payload (signal nodes + noise super-nodes)
     
     API->>FE: Return Presentation JSON Contract
-    FE->>FE: WebGL Canvas Render (Sigma.js - Highlight Full Attack Chain)
-    Auditor->>FE: Interacts (Filter protocol, Trace pivot paths, Export report)
+    FE->>FE: WebGL Canvas Render — Red Thread nodes: solid red z=3 / Noise super-nodes: dark slate z=0
+    Auditor->>FE: Interacts (Filter protocol, Trace pivot paths, Expand noise clusters, Export report)
     Auditor->>FE: Closes session / Purges RAM
 ```
 
@@ -171,7 +177,7 @@ Represents raw log records retained in memory for drill-down inspection.
 
 ## 4. Presentation Payload (JSON Contract)
 
-The presentation contract returns a unified graph topology representing a complete attack chain: an External Attacker IP (`198.51.100.42`) issuing an HTTP `POST` to a URL Node (`/api/v1/upload`), followed by a lateral SSH pivot to an Internal Host (`10.0.9.88`).
+The presentation contract illustrates the **Red Thread** philosophy: anomalous/high-risk entities are individual nodes rendered prominently in red (the "signal"), while all benign traffic is collapsed into 3 dark background Super-Nodes (the "noise"). The attack chain — `198.51.100.42` (External Attacker) → `POST /api/v1/upload` (Web exploit) → `10.0.9.88` (Internal SSH pivot) — is immediately legible with zero interaction.
 
 ```json
 {
@@ -186,8 +192,8 @@ The presentation contract returns a unified graph topology representing a comple
     "noise_reduction_ratio": 0.912
   },
   "summary": {
-    "total_nodes": 4,
-    "total_edges": 3,
+    "total_nodes": 6,
+    "total_edges": 5,
     "anomalous_edges_count": 2,
     "high_risk_nodes_count": 2,
     "detected_lateral_chains": 1
@@ -196,69 +202,61 @@ The presentation contract returns a unified graph topology representing a comple
     "nodes": [
       {
         "id": "host:198.51.100.42",
-        "label": "198.51.100.42 (External Attacker)",
+        "label": "198.51.100.42",
         "node_type": "HOST",
         "in_degree": 0,
         "out_degree": 2,
         "risk_score": 8.8,
-        "x": -250.0,
-        "y": 0.0,
-        "size": 20,
+        "x": -250.0, "y": 0.0, "size": 5.5,
         "color": "#EF4444",
-        "metadata": {
-          "is_internal": false,
-          "country": "External",
-          "layer": "external"
-        }
+        "metadata": { "is_internal": false, "layer": "external", "is_signal": true }
       },
       {
         "id": "url:/api/v1/upload",
         "label": "POST /api/v1/upload",
         "node_type": "URL",
-        "in_degree": 1,
-        "out_degree": 1,
+        "in_degree": 1, "out_degree": 1,
         "risk_score": 7.5,
-        "x": 500.0,
-        "y": -120.0,
-        "size": 4.0,
+        "x": 500.0, "y": -120.0, "size": 4.5,
         "color": "#EF4444",
-        "metadata": {
-          "uri_path": "/api/v1/upload",
-          "primary_verb": "POST",
-          "layer": "web"
-        }
-      },
-      {
-        "id": "host:10.0.4.15",
-        "label": "10.0.4.15 (Web Server)",
-        "node_type": "WEB_SERVER",
-        "in_degree": 1,
-        "out_degree": 1,
-        "risk_score": 6.2,
-        "x": 500.0,
-        "y": -40.0,
-        "size": 4.0,
-        "color": "#EF4444",
-        "metadata": {
-          "is_internal": true,
-          "layer": "web"
-        }
+        "metadata": { "uri_path": "/api/v1/upload", "primary_verb": "POST", "layer": "web", "is_signal": true }
       },
       {
         "id": "host:10.0.9.88",
-        "label": "10.0.9.88 (Crown Jewel DB)",
+        "label": "10.0.9.88",
         "node_type": "HOST",
-        "in_degree": 1,
-        "out_degree": 0,
+        "in_degree": 1, "out_degree": 0,
         "risk_score": 9.5,
-        "x": 1000.0,
-        "y": 80.0,
-        "size": 4.0,
-        "color": "#DC2626",
-        "metadata": {
-          "is_internal": true,
-          "layer": "internal"
-        }
+        "x": 1000.0, "y": 80.0, "size": 5.5,
+        "color": "#EF4444",
+        "metadata": { "is_internal": true, "layer": "internal", "is_signal": true }
+      },
+      {
+        "id": "super:external_noise",
+        "label": "Background Traffic (312 IPs)",
+        "node_type": "SUPER_NODE",
+        "risk_score": 0.5,
+        "x": 0.0, "y": 120.0, "size": 9.0,
+        "color": "#1E293B",
+        "metadata": { "layer": "external", "is_noise_super": true }
+      },
+      {
+        "id": "super:web_surface",
+        "label": "Web Surface (189 URLs)",
+        "node_type": "SUPER_NODE",
+        "risk_score": 0.5,
+        "x": 500.0, "y": 80.0, "size": 9.0,
+        "color": "#1E293B",
+        "metadata": { "layer": "web", "is_noise_super": true }
+      },
+      {
+        "id": "super:internal_baseline",
+        "label": "Internal Baseline (47 hosts)",
+        "node_type": "SUPER_NODE",
+        "risk_score": 0.5,
+        "x": 1000.0, "y": 200.0, "size": 9.0,
+        "color": "#1E293B",
+        "metadata": { "layer": "internal", "is_noise_super": true }
       }
     ],
     "edges": [
@@ -267,54 +265,33 @@ The presentation contract returns a unified graph topology representing a comple
         "source": "host:198.51.100.42",
         "target": "url:/api/v1/upload",
         "edge_type": "HTTP_REQUEST",
-        "weight": 3.8,
-        "total_attempts": 15,
-        "http_verb": "POST",
-        "status_code": 200,
-        "uri_path": "/api/v1/upload",
+        "weight": 3.8, "total_attempts": 15,
+        "http_verb": "POST", "status_code": 200,
         "is_anomalous": true,
         "anomaly_flags": ["WEB_EXPLOIT_POST"],
-        "first_timestamp": "2026-08-06T03:20:10Z",
-        "last_timestamp": "2026-08-06T03:20:15Z",
-        "size": 3.0,
-        "color": "#F59E0B",
-        "style": "solid"
-      },
-      {
-        "id": "edge:url:/api/v1/upload->host:10.0.4.15",
-        "source": "url:/api/v1/upload",
-        "target": "host:10.0.4.15",
-        "edge_type": "HTTP_REQUEST",
-        "weight": 1.0,
-        "total_attempts": 15,
-        "http_verb": "POST",
-        "status_code": 200,
-        "uri_path": "/api/v1/upload",
-        "is_anomalous": false,
-        "anomaly_flags": [],
-        "first_timestamp": "2026-08-06T03:20:10Z",
-        "last_timestamp": "2026-08-06T03:20:15Z",
-        "size": 0.3,
-        "color": "rgba(55, 65, 81, 0.03)",
-        "style": "solid"
+        "size": 3.5, "color": "#E88A2D", "style": "solid"
       },
       {
         "id": "edge:198.51.100.42->host:10.0.9.88",
         "source": "host:198.51.100.42",
         "target": "host:10.0.9.88",
         "edge_type": "SSH_AUTH",
-        "weight": 5.8,
-        "total_attempts": 6,
-        "successful_auths": 1,
-        "failed_auths": 5,
+        "weight": 5.8, "total_attempts": 6,
+        "successful_auths": 1, "failed_auths": 5,
         "distinct_users": ["root"],
         "is_anomalous": true,
         "anomaly_flags": ["SSH_PRIVILEGE_PIVOT", "FULL_ATTACK_CHAIN"],
-        "first_timestamp": "2026-08-06T03:22:15Z",
-        "last_timestamp": "2026-08-06T03:25:40Z",
-        "size": 3.0,
-        "color": "#DC2626",
-        "style": "dashed"
+        "size": 3.5, "color": "#FF2D55", "style": "solid"
+      },
+      {
+        "id": "edge:super:external_noise->super:web_surface",
+        "source": "super:external_noise",
+        "target": "super:web_surface",
+        "edge_type": "HTTP_REQUEST",
+        "weight": 0.5, "total_attempts": 4200,
+        "is_anomalous": false,
+        "anomaly_flags": [],
+        "size": 0.3, "color": "rgba(30, 41, 59, 0.05)", "style": "solid"
       }
     ]
   },
@@ -346,9 +323,12 @@ The presentation contract returns a unified graph topology representing a comple
 
 ### Bottleneck 4: Visual Clutter in Dense Graphs
 - **Risk:** Even after noise reduction, visualizing 5,000+ nodes using standard force-directed gravity physics creates an illegible "hairball" topology where critical attack chains are buried.
-- **Mitigation Strategy:**
-  - **Multi-Layer (DAG) Kill-Chain Layout:** Node positions are assigned deterministically into constrained X-band columns (External IPs at X=0, Web Layer at X=500, Internal Hosts at X=1000) grouped and sorted by `risk_score`. ForceAtlas2 is strictly optional.
-  - **Opacity and Z-Index Prioritization:** Standard connections (benign traffic) are rendered extremely thin (size 0.3) and nearly invisible (0.03 alpha). Anomalous links are assigned thick, solid neon lines (size 3.0) and pushed to the top z-index layer (`zIndex=2`) to immediately draw auditor focus.
+- **Mitigation Strategy — Red Thread / Signal vs. Noise Bifurcation:**
+  - **Strict Signal vs. Noise Split:** Before building the presentation payload, all nodes are bifurcated into exactly two streams:
+    - **THE SIGNAL (Red Thread):** Nodes with `risk_score >= 3.0` OR connected to any `is_anomalous=True` edge. These are **never** aggregated. They remain as individual high-prominence nodes rendered in solid red (`#EF4444`) at `zIndex=3`.
+    - **THE NOISE:** All remaining benign/low-risk nodes are aggressively collapsed into exactly **3 massive background Super-Nodes** — one per Kill Chain layer (`super:external_noise`, `super:web_surface`, `super:internal_baseline`). These render in very dark slate (`#1E293B`) with `zIndex=0` and edge opacity of 5%.
+  - **Multi-Layer (DAG) Kill-Chain Layout:** Node positions are assigned deterministically into constrained X-band columns (External at X=0, Web at X=500, Internal at X=1000). The 3 noise super-nodes sit at the same X positions but at visually recessive sizes and colors.
+  - **Red Thread Edge Hierarchy:** Anomalous edges (attack path) render at `size=3.5` with `zIndex=3` in bright red. Noise edges render at `size=0.3` with 5% opacity (`rgba(30, 41, 59, 0.05)`) and `zIndex=0`. The attack path is immediately visible as a bold red thread cutting through the dark background.
   - **Aggressive Label Culling:** Labels are strictly hidden by default (`labelRenderedSizeThreshold=8`) and only appear selectively on hover or deep zoom.
 
 ---

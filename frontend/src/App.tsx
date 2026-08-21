@@ -104,7 +104,7 @@ export default function App() {
                   setSessionId(chunk.meta.session_id);
                 }
 
-                setPayload({
+                setPayload((prev) => ({
                   meta: chunk.meta || {
                     session_id: `vestige_sess_${Date.now()}`,
                     timestamp: new Date().toISOString(),
@@ -118,15 +118,15 @@ export default function App() {
                   summary: {
                     total_nodes: accumulatedNodes.length,
                     total_edges: accumulatedEdges.length,
-                    anomalous_edges_count: chunk.summary.anomalous_edges_count,
-                    high_risk_nodes_count: chunk.summary.high_risk_nodes_count,
-                    detected_lateral_chains: chunk.summary.detected_lateral_chains,
+                    anomalous_edges_count: (prev?.summary?.anomalous_edges_count || 0) + chunk.summary.anomalous_edges_count,
+                    high_risk_nodes_count: (prev?.summary?.high_risk_nodes_count || 0) + chunk.summary.high_risk_nodes_count,
+                    detected_lateral_chains: (prev?.summary?.detected_lateral_chains || 0) + chunk.summary.detected_lateral_chains,
                   },
                   graph: {
                     nodes: accumulatedNodes,
                     edges: accumulatedEdges,
                   },
-                });
+                }));
 
                 setStreamingState({
                   isStreaming: !chunk.is_final,

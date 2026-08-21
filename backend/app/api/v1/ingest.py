@@ -95,11 +95,46 @@ async def analyze_log_file_stream(file: UploadFile = File(...)):
                 else:
                     df_unified = pl.DataFrame()
 
-                # Store the full DataFrame for drill-down queries
+                # ── SPILL TO DISK ────────────────────────────────────────
+                # Write the unified DataFrame to a snappy-compressed Parquet
+                # file on disk, then immediately release the in-memory frame.
+                # All subsequent reads (clustering, expand) use a LazyFrame
+                # so only the needed rows are ever loaded into RAM.
                 session_store.store_session(session_id, df_unified)
+                del df_unified  # free RAM — data is now on disk
 
-                # Build hierarchical super-nodes
-                super_nodes, super_edges = build_super_nodes(df_unified)
+                # Retrieve zero-RAM LazyFrame backed by the Parquet file
+                lf = session_store.get_session(session_id)
+
+                # ── Lazy protocol event counts (no full-frame load) ──────
+                if lf is not None:
+                    has_protocol_col = True
+                    try:
+                        ssh_count = (
+                            lf.filter(pl.col("protocol") == "SSH")
+                            .select(pl.len().alias("n"))
+                            .collect()
+                            .item()
+                        )
+                        http_count = (
+                            lf.filter(pl.col("protocol") == "HTTP")
+                            .select(pl.len().alias("n"))
+                            .collect()
+                            .item()
+                        )
+                    except Exception:
+                        # protocol column absent — graceful fallback
+                        ssh_count = 0
+                        http_count = 0
+                else:
+                    ssh_count = 0
+                    http_count = 0
+
+                # ── Build hierarchical super-nodes (lazy-aware) ──────────
+                # Pass the LazyFrame; clustering engine filters only what it needs
+                super_nodes, super_edges = build_super_nodes(
+                    lf if lf is not None else pl.DataFrame()
+                )
 
                 # Serialize super-nodes as node dicts (SuperNodeModel extends NodeModel)
                 super_node_dicts = [sn.model_dump() for sn in super_nodes]
@@ -132,8 +167,8 @@ async def analyze_log_file_stream(file: UploadFile = File(...)):
                         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                         "log_filename": file.filename,
                         "total_lines_parsed": total_lines,
-                        "valid_ssh_events": len(df_unified.filter(pl.col("protocol") == "SSH")) if "protocol" in df_unified.columns else 0,
-                        "valid_http_events": len(df_unified.filter(pl.col("protocol") == "HTTP")) if "protocol" in df_unified.columns else 0,
+                        "valid_ssh_events": ssh_count,
+                        "valid_http_events": http_count,
                         "processing_time_ms": elapsed_ms,
                         "noise_reduction_ratio": 0.0,
                     },
